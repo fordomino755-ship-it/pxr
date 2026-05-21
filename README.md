@@ -1,41 +1,22 @@
-# PXR pEC50 Prediction with TabPFN
+# OpenADMET PXR TabPFN Baseline
 
-A compact TabPFN-based workflow for the OpenADMET PXR pEC50 prediction task.
+A small baseline for predicting PXR pEC50 values.
 
-This project takes molecular SMILES, converts them into simple molecular features, trains a TabPFN regression model, evaluates it on a local validation split, then retrains on the full training set to create a submission file.
+This project uses:
 
----
+- Morgan fingerprints
+- RDKit 2D descriptors
+- TabPFN regressor
+- a simple train/validation split
+- full-train prediction for the final test set
 
-## 1. What this script does
+## Files
 
-The pipeline is intentionally direct:
-
-```text
-train/test CSV
-    ↓
-SMILES cleanup
-    ↓
-Morgan fingerprint + RDKit 2D descriptors
-    ↓
-feature cleaning / imputation / scaling
-    ↓
-TabPFNRegressor
-    ↓
-validation report + final submission
-```
-
-The goal is not to build a complicated ensemble. The goal is to test whether a pure TabPFN table-model route can give a strong and reproducible baseline from molecular features.
-
----
-
-## 2. Project layout
-
-Expected folder structure:
+Expected project layout:
 
 ```text
-project_root/
+project/
   main_tabpfn.py
-  README.md
   data/
     openadmet_train_clean.csv
     openadmet_test_clean.csv
@@ -43,168 +24,72 @@ project_root/
   submissions/
 ```
 
-The `outputs/` and `submissions/` folders are created automatically if they do not already exist.
+## Input data
 
----
-
-## 3. Input files
-
-### Training CSV
-
-Default path:
+The train CSV should contain:
 
 ```text
-data/openadmet_train_clean.csv
+Molecule Name
+SMILES
+pEC50
 ```
 
-Required columns:
-
-| Column | Meaning |
-|---|---|
-| `Molecule Name` | molecule identifier |
-| `SMILES` | original SMILES string |
-| `canonical_smiles` | canonicalized SMILES string, if already available |
-| `pEC50` | regression target |
-
-### Test CSV
-
-Default path:
+The test CSV should contain:
 
 ```text
-data/openadmet_test_clean.csv
+Molecule Name
+SMILES
 ```
 
-Required columns:
+If `canonical_smiles` already exists, the script can use it.  
+Otherwise, it will generate canonical SMILES from `SMILES`.
 
-| Column | Meaning |
-|---|---|
-| `Molecule Name` | molecule identifier |
-| `SMILES` | original SMILES string |
-| `canonical_smiles` | canonicalized SMILES string, if already available |
-
-When `canonical_smiles` is missing, the script tries to create it from `SMILES` with RDKit.
-
----
-
-## 4. Installation
-
-Use Python 3.10 or 3.11 if possible.
+## Install
 
 ```bash
 pip install -U tabpfn-client rdkit pandas numpy scipy scikit-learn
 ```
 
-If RDKit installation fails through pip, install RDKit using the package method that works best for your environment, then rerun the command without `rdkit`.
+## Set TabPFN API token
 
----
-
-## 5. API token setup
-
-The script should read the TabPFN API token from an environment variable.
-
-### PowerShell
+PowerShell:
 
 ```powershell
 $env:TABPFN_CLIENT_TOKEN="your_token_here"
 ```
 
-### CMD
+CMD:
 
 ```cmd
 set TABPFN_CLIENT_TOKEN=your_token_here
 ```
 
-### Linux / macOS shell
+Do not put the token directly into the Python file.
 
-```bash
-export TABPFN_CLIENT_TOKEN="your_token_here"
-```
-
-Do not hard-code the token into `main_tabpfn.py`. Do not commit the token to GitHub.
-
----
-
-## 6. Basic run
-
-From the project root:
+## Run
 
 ```bash
 python main_tabpfn.py
 ```
 
-This uses the default files:
-
-```text
-data/openadmet_train_clean.csv
-data/openadmet_test_clean.csv
-```
-
----
-
-## 7. Custom run examples
-
-Use a different train/test file:
-
-```bash
-python main_tabpfn.py --train_csv data/my_train.csv --test_csv data/my_test.csv
-```
-
-Try fewer Morgan bits:
+Optional examples:
 
 ```bash
 python main_tabpfn.py --n_bits 512
-```
-
-Try the default Morgan size used in the script:
-
-```bash
 python main_tabpfn.py --n_bits 1024
+python main_tabpfn.py --val_size 0.2
+python main_tabpfn.py --seed 42
 ```
 
-Try a larger fingerprint:
-
-```bash
-python main_tabpfn.py --n_bits 2048
-```
-
-Change the validation split:
-
-```bash
-python main_tabpfn.py --val_size 0.15
-```
-
-Change the random seed:
-
-```bash
-python main_tabpfn.py --seed 123
-```
-
-Enable TabPFN thinking mode, if supported by your installed client and account:
+If the script supports thinking mode:
 
 ```bash
 python main_tabpfn.py --thinking --thinking_timeout_s 600
 ```
 
----
+## Output files
 
-## 8. Main parameters
-
-| Parameter | Default | Meaning |
-|---|---:|---|
-| `--train_csv` | `data/openadmet_train_clean.csv` | training file |
-| `--test_csv` | `data/openadmet_test_clean.csv` | test file |
-| `--seed` | `42` | random seed |
-| `--val_size` | `0.2` | local validation ratio |
-| `--n_bits` | `1024` | Morgan fingerprint length |
-| `--radius` | `2` | Morgan fingerprint radius |
-| `--thinking` | off | optional TabPFN thinking mode |
-| `--thinking_timeout_s` | `600` | timeout for thinking mode |
-
----
-
-## 9. Output files
-
-After running, the script writes:
+After running, the script saves:
 
 ```text
 outputs/validation_metrics_tabpfn.csv
@@ -213,187 +98,54 @@ outputs/test_predictions_tabpfn.csv
 submissions/submission_tabpfn.csv
 ```
 
-### `validation_metrics_tabpfn.csv`
-
-Local validation metrics.
-
-Expected columns include:
-
-| Metric | Meaning |
-|---|---|
-| `MAE` | mean absolute error |
-| `RMSE` | root mean squared error |
-| `R2` | coefficient of determination |
-| `RAE` | relative absolute error |
-| `Spearman` | rank correlation |
-| `Kendall` | rank correlation |
-
-### `validation_predictions_tabpfn.csv`
-
-Per-molecule validation predictions.
-
-Useful for checking:
-
-- which molecules are badly predicted
-- whether errors cluster by scaffold
-- whether the model is too conservative
-- whether high or low pEC50 values are compressed
-
-### `test_predictions_tabpfn.csv`
-
-Detailed prediction file for the test set.
-
-This is mainly for debugging and analysis.
-
-### `submission_tabpfn.csv`
-
-Final submission file.
-
-Expected format:
+The main submission file is:
 
 ```text
-SMILES,Molecule Name,pEC50
+submissions/submission_tabpfn.csv
 ```
 
-This is the file to submit.
-
----
-
-## 10. How to interpret the validation result
-
-A good local validation score does not always guarantee a good leaderboard score. This script uses a simple random validation split by default, so it mainly answers:
-
-> Can TabPFN learn a reasonable mapping from the current molecular features to pEC50?
-
-It does not fully answer:
-
-> Will the model generalize to new analog series or hidden test scaffolds?
-
-For more trustworthy testing, run the script with several seeds and compare the stability of the metrics.
-
-Example:
-
-```bash
-python main_tabpfn.py --seed 1
-python main_tabpfn.py --seed 2
-python main_tabpfn.py --seed 3
-python main_tabpfn.py --seed 4
-python main_tabpfn.py --seed 5
-```
-
-If validation metrics swing heavily between seeds, the split is not stable enough to judge small improvements.
-
----
-
-## 11. Notes on features
-
-The feature matrix is built from two parts:
-
-### Morgan fingerprint
-
-A binary molecular fingerprint similar to ECFP4 when `radius=2`.
-
-It captures local substructure patterns.
-
-### RDKit 2D descriptors
-
-A set of computed molecular descriptors from RDKit.
-
-They provide continuous chemistry-related properties such as molecular weight, polarity, ring counts, and other descriptor values.
-
-Before training, the script removes constant descriptor columns and handles invalid numeric values.
-
----
-
-## 12. Practical tuning suggestions
-
-Recommended first tests:
-
-```bash
-python main_tabpfn.py --n_bits 512 --seed 42
-python main_tabpfn.py --n_bits 1024 --seed 42
-python main_tabpfn.py --n_bits 2048 --seed 42
-```
-
-Then test seed stability on the best-looking setting:
-
-```bash
-python main_tabpfn.py --n_bits 1024 --seed 1
-python main_tabpfn.py --n_bits 1024 --seed 2
-python main_tabpfn.py --n_bits 1024 --seed 3
-```
-
-For this task, a slightly smaller feature dimension may work better than a very large one because TabPFN is operating as a tabular learner, not as a molecular graph model.
-
----
-
-## 13. Troubleshooting
-
-### `TABPFN_CLIENT_TOKEN is missing`
-
-Set the token before running:
-
-```powershell
-$env:TABPFN_CLIENT_TOKEN="your_token_here"
-```
-
-Then run the script in the same terminal window.
-
-### `Cannot find SMILES column`
-
-Check that the CSV contains at least one of:
+It contains:
 
 ```text
 SMILES
-canonical_smiles
+Molecule Name
+pEC50
 ```
 
-### RDKit cannot parse some molecules
+## Method
 
-The script skips invalid molecules during feature generation. If too many are skipped, inspect the SMILES column for formatting issues.
+The script first reads the train and test CSV files.
 
-### API or network error
-
-The TabPFN client needs network access. Check:
-
-- token is valid
-- internet connection is available
-- package version is current
-- request did not time out
-
-### Validation works but submission has the wrong number of rows
-
-Check whether invalid test molecules were removed during feature generation. The test file should contain valid SMILES for all molecules expected by the competition.
-
----
-
-## 14. Reproducibility checklist
-
-Before submitting, record:
+Then it builds molecular features:
 
 ```text
-script name: main_tabpfn.py
-train file: data/openadmet_train_clean.csv
-test file: data/openadmet_test_clean.csv
-seed: 42
-n_bits: 1024
-radius: 2
-val_size: 0.2
-output: submissions/submission_tabpfn.csv
+SMILES
+  -> Morgan fingerprint
+  -> RDKit 2D descriptors
+  -> final feature table
 ```
 
-Also save:
+It trains TabPFN on the training split and checks validation metrics.
+
+Finally, it trains again on all training data and predicts the test set.
+
+## Metrics
+
+The validation output includes common regression metrics:
 
 ```text
-outputs/validation_metrics_tabpfn.csv
-outputs/validation_predictions_tabpfn.csv
-outputs/test_predictions_tabpfn.csv
+MAE
+RMSE
+R2
+RAE
+Spearman
+Kendall
 ```
 
-These files make it easier to compare later experiments.
+## Notes
 
----
+This is a simple baseline.
 
-## 15. One-line summary
+It does not use external training data, GNN models, mol2vec, or complicated ensembling.
 
-This is a minimal TabPFN regression pipeline for PXR pEC50 prediction: molecular features in, local validation metrics out, final submission generated from the full training set.
+The goal is to keep the pipeline short and easy to modify.
