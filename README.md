@@ -14,7 +14,7 @@ Expected project layout:
 
 ```text
 project/
-  main_tabpfn.py
+  main.py
   data/
     openadmet_train_clean.csv
     openadmet_test_clean.csv
@@ -67,22 +67,22 @@ Do not put the token directly into the Python file.
 ## Run
 
 ```bash
-python main_tabpfn.py
+python main.py
 ```
 
 Optional examples:
 
 ```bash
-python main_tabpfn.py --n_bits 512
-python main_tabpfn.py --n_bits 1024
-python main_tabpfn.py --val_size 0.2
-python main_tabpfn.py --seed 42
+python main.py --n_bits 512
+python main.py --n_bits 1024
+python main.py --val_size 0.2
+python main.py --seed 42
 ```
 
 If the script supports thinking mode:
 
 ```bash
-python main_tabpfn.py --thinking --thinking_timeout_s 600
+python main.py --thinking --thinking_timeout_s 600
 ```
 
 ## Output files
