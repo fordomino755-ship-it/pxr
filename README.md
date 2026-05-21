@@ -1,6 +1,4 @@
-# OpenADMET PXR TabPFN Baseline
-
-A small baseline for predicting PXR pEC50 values.
+# OpenADMET PXR TabPFN
 
 This project uses:
 
